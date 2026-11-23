@@ -1,41 +1,67 @@
-# importer le module pymongo
-# importer les focntion utils
+from pymongo import MongoClient
+import os
 
-# fonction pour se connecter a mongodb
-    # faire la connextion avec mongodb
-    # retourner la base de donées
+from game import combat_a_mort, create_team, afficher_game_over
+from utils import get_user_choice_from_options, get_username, recuperer_choix_utilisateur
 
-# fonction pour afficher le menu
-    # faire la connexion avec mongodb en local
-    # retourner la base de donées
+MENU = ["Jouer", "Leaderboard", "Quitter"]
 
-# fonction pour lancer la partie
-    # demander le pseudo du joeuur 
-    # TODO: appeler la creation de l'equipe
-    # TODO: lancer les combat en boucle
-    # afficher le score 
 
-# fonction pour voir le classement
-    # afficher un titre pour le top 3
-    # TODO: recuperer et afficher les 3 meilleurs scores depuis mongodb
+def choix_menu():
+	# Recuperer le choix utilisateur valide depuis la liste MENU
+	message = "Veuillez choisir une option :"
+	return get_user_choice_from_options(MENU, message)
 
-# fonction pricipale du programme 
-    # se connecter a la base de donées
-    # afficher un message de bienvenue
 
-# boucle pour garder le menu actif
-    #afficher le menu
-    # demander un choix compris entre 1 et 3
+def lancer_processus(choix):
+	if choix == 1:
+		lancer_jeu()
+		pass
+	elif choix == 2:
+		# Afficher le leaderboard
+		pass
+	elif choix == 3:
+		# Quitter le programme
+		pass
 
-    # si choix = 1
-        # lancer la parti
 
-    # si choix = 2
-        # afficher le classement
+def main():
+	choix = choix_menu()
+	lancer_processus(choix)
 
-    # si choix = 3
-        # afficher un message d'aurevoir
-        # quitter la boucle via break
 
-# verifier si on lance le script directement
-    # appeler la focntion main
+def lancer_jeu():
+	db = connect_db()
+	pseudo = get_username(db)
+	heros_disponibles = recuperer_all_heroes(db)
+	monstres = recuperer_all_monsters(db)
+	equipe = create_team(heros_disponibles)
+	score = combat_a_mort(equipe, monstres)
+	afficher_game_over(equipe, score)
+	enregistrer_resultat_combat(db, pseudo, score)
+
+
+def enregistrer_resultat_combat(db, pseudo, score):
+	db["scores"].insert_one({
+		"player_name": pseudo,
+		"waves": score
+	})
+
+
+def recuperer_all_heroes(db):
+	return list(db["characters"].find())
+
+
+def recuperer_all_monsters(db):
+	return list(db["monsters"].find())
+
+
+def connect_db():
+	client = MongoClient(os.getenv("MONGO_URL"))
+	return client["game_db"]
+
+
+# Lancer le processus choisi
+
+choix = recuperer_choix_utilisateur(["Option 1", "Option 2", "Option 3"])
+print(f"Vous avez choisi l'option {choix}")

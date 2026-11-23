@@ -1,68 +1,252 @@
-# fonction de lancer_partie :
-   # mettre le compteur de vagues à 1
-   # indiquer que la partie est toujours en cours
-   # récupérer la liste des monstres depuis la base de données
-   # récupérer la liste des scores depuis la base de données
-    
-   # tant que le joueur n'a pas perdu :
-       # choisir un monstre au hasard
-       # afficher le numéro de la vague
-       # afficher le nom et les caractéristiques du monstre
-        
-       # tant que le monstre et l'équipe sont encore en vie :
-           # faire attaquer les personnages de l'équipe
-           # vérifier si le monstre a encore des points de vie
-           # si le monstre est vaincu :
-               # afficher un message pour annoncer la victoire
-               # passer à la vague suivante
-               # arreter le combat en cours
-           # sinon :
-               # faire attaquer le monstre
-            
-           # vérifier si il reste des personnages en vie dans l'équipe
-           # si toute l'équipe est éliminée :
-               # indiquer que la partie est perdue
-               # arreter la partie
-                
-   # enregistrer le score du joueur et afficher le classement
+from time import sleep
+import copy
+from random import choice
+from rich.console import Console
+from rich.layout import Layout
+
+from utils import create_panel, get_user_choice_from_options, recuperer_choix_utilisateur
+
+LAYOUT = Layout()
+console = Console()
+
+TAILLE_MAX_EQUIPE = 3
+LAYOUT.split_row(
+    Layout(name="left", ratio=2),
+    Layout(name="center", ratio=3),  # Le centre sera 3 fois plus grand
+    Layout(name="right", ratio=2)   # La droite sera 2 fois plus grande
+)
 
 
-# fonction de tirer_monstre_aleatoire :
-   # récupérer la liste des monstres dans la base de données
-   # choisir un monstre au hasard dans la liste
-   # renvoyer le monstre choisi avec ses caractéristiques
+def afficher_game_over(equipe, score):
+	print("Game Over !")
+	print(f"Votre équipe a survécu à {score} vagues.")
+	print("Statut final de l'équipe :")
+	for hero in equipe:
+		print(f"{hero['name']} - HP: {hero['hp']}")
 
 
-# fonction de gerer_attaques_equipe :
-   # parcourir tous les personnages de l'équipe :
-       # vérifier si le personnage est encore vivant
-       # si c'est le cas :
-           # calculer les dégats en prenant en compte son attaque et la défense du monstre
-           # faire en sorte que les dégats soient au minimum de 1
-           # retirer les dégats des points de vie du monstre
-           # afficher un message pour dire que le personnage a attaqué
+def est_entite_en_vie(entite):
+	return entite["hp"] > 0
 
 
-# fonction de gerer_attaque_monstre :
-   # garder uniquement les personnages qui sont encore en vie
-   # choisir au hasard un personnage parmi les survivants
-   # calculer les dégats en tenant compte de l'attaque du monstre et de la défense du personnage
-   # faire en sorte que les dégats soient au minimum de 1
-   # retirer les dégats des points de vie du personnage
-   # afficher un message pour dire que le monstre a attaqué
+def est_equipe_en_vie(equipe):
+	for hero in equipe:
+		if est_entite_en_vie(hero):
+			return True
+	return False
 
 
-# fonction de verifier_equipe_vivante :
-   # parcourir les personnages de l'équipe :
-       # si un personnage a encore des points de vie :
-           # retourner vrai car il reste au moins un survivant
-   # si aucun personnage n'est encore en vie :
-       # retourner faux
+def selectionner_monstre(monstres):
+	monstre_choice = choice(monstres)
+	return copy.deepcopy(monstre_choice)
 
 
-# fonction de traiter_fin_de_partie :
-   # afficher le score final du joueur
-   # préparer un dictionnaire avec le nom du joueur et le nombre de vagues atteintes
-   # enregistrer le score dans la base de données MongoDB
-   # récupérer les trois meilleurs scores, du plus élevé au plus faible
-   # afficher le classement des trois meilleurs joueurs
+def combat_a_mort(equipe, monstres):
+	vague = 1
+	while est_equipe_en_vie(equipe):
+		monstre = selectionner_monstre(monstres)
+		victoire = lancer_vague(equipe, monstre)
+		if victoire:
+			print(f"Victoire pour la vague {vague} !")
+			vague += 1
+	return vague
+
+
+def lancer_vague(equipe, monstre):
+	while est_entite_en_vie(monstre) and est_equipe_en_vie(equipe):
+		evenements = tour_de_vague(equipe, monstre)
+		afficher_evenements(evenements, equipe, monstre)
+		sleep(1)
+	return est_equipe_en_vie(equipe)
+
+
+def update_layout(equipePanel, monstrePanel, info_panel):
+	global LAYOUT
+	LAYOUT["left"].update(equipePanel)
+	LAYOUT["right"].update(monstrePanel)
+	LAYOUT["center"].update(info_panel)
+
+
+def afficher_evenements(evenements, equipe, monstre):
+	console.clear()
+	print("\n\n")
+
+	equipePanel = create_panel("Equipe", "\n".join(
+		[f"{hero['name']} - HP: {hero['hp']}" for hero in equipe]), "green")
+	monstrePanel = create_panel(
+		"Monstre", f"{monstre['name']} - HP: {monstre['hp']}", "red")
+	info_panel = create_panel("Evenements", "\n".join(evenements), "yellow")
+
+	update_layout(equipePanel, monstrePanel, info_panel)
+
+	console.print(LAYOUT, height=10)
+
+
+def afficher_stats(equipe, monstre):
+	print("-" * 10 + " Stats " + "-" * 10)
+	print("Stats de l'equipe :")
+	for hero in equipe:
+		if not est_entite_en_vie(hero):
+			print(f"{hero['name']} est KO")
+			continue
+		print(f"{hero['name']} - HP: {hero['hp']}")
+	print("Stats du monstre :")
+	print(f"{monstre['name']} - HP: {monstre['hp']}")
+	print("-" * 30)
+
+
+def tour_de_vague(equipe, monstre):
+	evenements = []
+	evenements += tour_utilisateur(equipe, monstre)
+	if est_entite_en_vie(monstre):
+		evenements += tour_monstre(equipe, monstre)
+	return evenements
+
+
+def tour_monstre(equipe, monstre):
+	evenements = []
+	cible = recuperer_cible(equipe)
+	degat = attaquer(monstre, cible)
+	evenements.append(
+		f"{monstre['name']} inflige {degat} degats a {cible['name']}")
+	return evenements
+
+
+def attaquer(attacker, cible):
+	degat = calculer_degats(attacker, cible)
+	if degat > cible["hp"]:
+		degat = cible["hp"]
+	cible["hp"] -= degat
+	return degat
+
+
+def calculer_degats(attacker, cible):
+	degat = attacker["attack"] - cible["defense"]
+	if degat < 1:
+		degat = 1
+	return degat
+
+
+def recuperer_cible(equipe):
+	cible_potentielle = recuperer_heros_en_vie(equipe)
+	return choice(cible_potentielle)
+
+
+def recuperer_heros_en_vie(equipe):
+	heros_en_vie = []
+	for hero in equipe:
+		if est_entite_en_vie(hero):
+			heros_en_vie.append(hero)
+	return heros_en_vie
+
+
+def tour_utilisateur(equipe, monstre):
+	evenements = []
+	heros_en_vie = recuperer_heros_en_vie(equipe)
+	for hero in heros_en_vie:
+		evenements += tour_perso_jouable(hero, monstre)
+	return evenements
+
+
+def tour_perso_jouable(hero, monstre):
+	evenements = []
+	if est_entite_en_vie(monstre):
+		degat = attaquer(hero, monstre)
+		evenements.append(
+			f"{hero['name']} inflige {degat} degats a {monstre['name']}")
+	return evenements
+
+
+def create_team(heroes):
+	equipe = []
+	while not equipe_est_complete(equipe):
+		afficher_equipe_actuelle(equipe)
+		heros_dispo = calculer_heros_disponibles(equipe, heroes)
+		options = construire_options(heros_dispo)
+		choix = get_user_choice_from_options(options, "Choisissez un héros : ")
+		selected_hero = copy.deepcopy(heros_dispo[choix - 1])
+		equipe.append(selected_hero)
+	return equipe
+
+
+def equipe_est_complete(equipe):
+	if len(equipe) < TAILLE_MAX_EQUIPE:
+		return False
+	return True
+
+
+def hero_to_string(hero):
+	return f"{hero['name']} - ATK : {hero['attack']} - HP : {hero['hp']} - DEF : {hero['defense']}"
+
+
+def construire_options(liste_heros_dispo):
+	options = []
+	for hero in liste_heros_dispo:
+		options.append(hero_to_string(hero))
+	return options
+
+
+def calculer_heros_disponibles(equipe, liste_heros):
+	heros_disponibles = []
+	for hero in liste_heros:
+		if hero not in equipe:
+			heros_disponibles.append(hero)
+	return heros_disponibles
+
+
+def afficher_personnage(personnage):
+	print(hero_to_string(personnage))
+
+
+def afficher_equipe_actuelle(equipe):
+	for i in range(TAILLE_MAX_EQUIPE):
+		if i < len(equipe):
+			afficher_personnage(equipe[i])
+		else:
+			print("Vide")
+
+
+# Besoin la liste des personnages de la DB
+def creer_equipe(liste_personnages_db):
+	# creer la variable equipe vide
+	equipe = []
+	# tant que l'equipe n'est pas complete
+	while not est_equipe_complete(equipe):
+		#     determiner la liste des personnages disponibles
+		personnages_disponibles = determiner_personnages_disponibles(
+			liste_personnages_db, equipe)
+		#     construire la liste des options a afficher disponibles
+		options_affichables = construire_options_affichables(personnages_disponibles)
+		#     recuperer un choix valide
+		choix = recuperer_choix_utilisateur(options_affichables)
+		#     ajouter le personnage choisi a l'equipe index = choix - 1
+		equipe.append(personnages_disponibles[choix - 1])
+	# retourner l'equipe
+	return equipe
+
+# construire la liste des options a afficher disponibles
+
+
+def construire_options_affichables(personnages_disponibles):
+	# creer la liste options
+	options = []
+	# pour chaque personnage dans personnages_disponibles
+	for personnage in personnages_disponibles:
+		#    ajouter a la liste : f"{personnage["nom"]} - ATK : {personnage["atk"]} - DEF : {personnage["def"]}"
+		options.append(
+			f"{personnage['nom']} - ATK : {personnage['atk']} - DEF : {personnage['def']}")
+	# retourner la liste des options
+	return options
+
+
+def determiner_personnages_disponibles(liste_personnages_db, equipe):
+	# creer la liste des personnages disponibles
+	personnages_disponibles = []
+	# pour chaque personnage dans la liste des personnages de la DB
+	for personnage in liste_personnages_db:
+		#     si le personnage n'est pas dans l'equipe
+		if personnage not in equipe:
+			#         l'ajouter a la liste des personnages disponibles
+			personnages_disponibles.append(personnage)
+	# renvoyer la liste des personnages disponibles
+	return personnages_disponibles
