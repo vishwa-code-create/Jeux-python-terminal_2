@@ -1,5 +1,7 @@
 import sys
 from pymongo import MongoClient
+import random
+from typing import List
 
 
 
@@ -56,3 +58,36 @@ class Game:
         Affichage.DisplayVue(Vue.VueQuitter)
         self.mongoClient.close()
         sys.exit(0)
+
+
+
+class Vague:
+    def __init__(self) -> None:
+        self.vague_actuelle: int = 1
+        self.monsters: List[Enemy] = []
+
+
+    def PickEnemies(self, vague: "Vague") -> None:
+        """Sélectionne et génère les ennemis en fonction de la difficulté de la vague."""
+        difficulte = vague.GetDifficulty()
+        self.monsters.clear()
+        
+        # Génère un nombre d'ennemis proportionnel à la difficulté
+        nb_ennemis = random.randint(1, 2 + difficulte)
+        for _ in range(nb_ennemis):
+            # Crée une instance d'Enemy (à adapter selon le constructeur de votre classe Enemy)
+            ennemi = Enemy()
+            self.monsters.append(ennemi)
+
+
+    # methode PlayVague(self) -> None
+    # afficher un message de debut de vague avec Affichage
+    # boucler tant qu'il reste au moins un monstre vivant dans self.monsters (monster.IsAlive())
+        # parcourir les monstres vivants
+        # gerer les tours d'attaque entre le joueur et les monstres
+    # afficher que la vague est finie
+    # ajouter 1 a self.vague_actuelle
+
+
+    # methode GetDifficulty(self) -> int
+    # calculer et renvoyer la difficulte selon vague_actuelle (par ex return self.vague_actuelle)

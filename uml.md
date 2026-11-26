@@ -99,6 +99,7 @@ classDiagram
 
     class Affichage {
         +DisplayVue(vue: Function)
+        +DemanderInput(prompt: String) String
         +ShowError(error: String)
         +create_info_box(titre: String, info: String, box_color: String, text_color: String) Panel
         +create_select_box(titre: String, items: List~Item~, index: int, box_color: String, text_color: String, hover_color: String) Panel
