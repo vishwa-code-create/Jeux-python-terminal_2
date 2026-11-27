@@ -57,8 +57,3 @@ class Game:
         Affichage.DisplayVue(Vue.VueQuitter)
         self.mongoClient.close()
         sys.exit(0)
-
-
-
-
-

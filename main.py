@@ -120,11 +120,11 @@ def est_equipe_complete(equipe):
 
 
 def recuperer_persos_db(db):
-	return list(db["characters"].find())
+	return list(db["personnages"].find())
 
 
 def create_perso_message(perso):
-	return f"{perso['name']} - ATK : {perso['attack']} - HP : {perso['hp']} - DEF : {perso['defense']}"
+	return f"{perso['nom']} - ATK : {perso['atk']} - HP : {perso['pv']} - DEF : {perso['def']}"
 
 
 def create_persos_message(persos):
@@ -140,11 +140,11 @@ def get_perso_choice(persos):
 
 
 def recuperer_monstres_db(db):
-	return list(db["monsters"].find())
+	return list(db["monstres"].find())
 
 
 def est_entite_en_vie(entite):
-	return entite["hp"] > 0
+	return entite["pv"] > 0
 
 
 def est_equipe_en_vie(equipe):
@@ -198,9 +198,9 @@ def choose_target_in_team(equipe):
 
 
 def infliger_degats(atk, defn):
-	degats = max(atk["attack"] - defn["defense"], 1)
-	defn["hp"] = max(defn["hp"] - degats, 0)
-	return f"{atk['name']} inflige {degats} degats a {defn['name']}"
+	degats = max(atk["atk"] - defn["def"], 1)
+	defn["pv"] = max(defn["pv"] - degats, 0)
+	return f"{atk['nom']} inflige {degats} degats a {defn['nom']}"
 
 
 def copy_entity(entite):
@@ -250,7 +250,7 @@ def creer_titre_tour(player):
 
 
 def creer_text_equipe(equipe):
-	return "\n".join([f"{membre['name']} - HP: {membre['hp']}" for membre in equipe])
+	return "\n".join([f"{membre['nom']} - HP: {membre['pv']}" for membre in equipe])
 
 
 def creer_team_panel(equipe):
@@ -261,7 +261,7 @@ def creer_team_panel(equipe):
 
 
 def creer_text_monstre(monstre):
-	return f"{monstre['name']} - HP: {monstre['hp']}"
+	return f"{monstre['nom']} - HP: {monstre['pv']}"
 
 
 def creer_monstre_panel(monstre):
@@ -383,7 +383,7 @@ client = pymongo.MongoClient(os.getenv("MONGO_URL"))
 
 
 def connect_db():
-	db = client["game_db"]
+	db = client["jeu_combat"]
 	return db
 
 
