@@ -74,7 +74,7 @@ def afficher_options_numerotees(options):
 
 
 def truc_complexe(choix):
-	# requete...
+	                       
 
 	return True
 
